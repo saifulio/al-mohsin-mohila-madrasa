@@ -1,17 +1,35 @@
 document.addEventListener("DOMContentLoaded", () => {
-  fetch("donation.csv")
+  Promise.all([fetchCsv("donation.csv"), fetchCsv("expenditure.csv")]).then(
+    ([donationData, expenditureData]) => {
+      // Add a flag to differentiate between donations and expenditures
+      donationData.forEach((row) => (row.type = "donation"));
+      expenditureData.forEach((row) => (row.type = "expenditure"));
+
+      // Combine both datasets
+      const combinedData = [...donationData, ...expenditureData];
+
+      // Group by month and render tables
+      const groupedByMonth = groupByMonth(combinedData);
+      renderMonthlyTables(groupedByMonth);
+    }
+  );
+});
+
+// Function to fetch CSV data and parse it using PapaParse
+function fetchCsv(file) {
+  return fetch(file)
     .then((response) => response.text())
     .then((csvText) => {
-      Papa.parse(csvText, {
-        header: true,
-        complete: function (results) {
-          const data = results.data;
-          const groupedByMonth = groupByMonth(data);
-          renderMonthlyTables(groupedByMonth);
-        },
+      return new Promise((resolve) => {
+        Papa.parse(csvText, {
+          header: true,
+          complete: function (results) {
+            resolve(results.data);
+          },
+        });
       });
     });
-});
+}
 
 // Group data by month (YYYY-MM format)
 function groupByMonth(data) {
@@ -58,7 +76,7 @@ function createTable(data, month) {
   const thead = document.createElement("thead");
   thead.innerHTML = `
         <tr>
-            <th colspan="5">Donations for ${month}</th>
+            <th colspan="5">Transactions for ${month}</th>
         </tr>
         <tr>
             <th data-column="name" data-order="asc">Name</th>
@@ -78,8 +96,13 @@ function createTable(data, month) {
             <td>${row.date}</td>
             <td>${row.phone}</td>
             <td>${row.amount}</td>
-            <td>${row.items}</td>
+            <td>${row.items || ""}</td>
         `;
+
+    // Apply different background colors based on the type
+    tableRow.style.backgroundColor =
+      row.type === "donation" ? "#d4f7d4" : "#f7d4d4";
+
     tbody.appendChild(tableRow);
   });
 

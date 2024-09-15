@@ -38,19 +38,28 @@ tr:nth-child(even) {
 
 .summary {
   margin-bottom: 40px;
-  text-align: left; /* Align summary content to the left */
-  padding-left: 20px; /* Optional padding for a more visually appealing left alignment */
+  text-align: left;
+  padding-left: 20px;
 }
 
 .summary h2,
 .summary h3 {
-  text-align: left; /* Ensure headings are left-aligned */
+  text-align: left;
 }
 
 ul {
   list-style-type: none;
   padding: 0;
-  text-align: left; /* Left-align the list items */
+  text-align: left;
+}
+
+/* Row background colors for donations and expenditures */
+tr.donation {
+  background-color: #d4f7d4; /* Light green for donations */
+}
+
+tr.expenditure {
+  background-color: #f7d4d4; /* Light red for expenditures */
 }
 
 .donation-table {
