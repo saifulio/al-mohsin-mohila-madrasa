@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-  Promise.all([fetchCsv("donation.csv"), fetchCsv("expenditure.csv")]).then(
+  // Fetch donations and expenditures from the backend API
+  Promise.all([fetchCsv("/api/donations"), fetchCsv("/api/expenditures")]).then(
     ([donationData, expenditureData]) => {
       // Add a flag to differentiate between donations and expenditures
       donationData.forEach((row) => (row.type = "donation"));
@@ -15,9 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 });
 
-// Function to fetch CSV data and parse it using PapaParse
-function fetchCsv(file) {
-  return fetch(file)
+// Function to fetch CSV data from the backend API
+function fetchCsv(url) {
+  return fetch(url)
     .then((response) => response.text())
     .then((csvText) => {
       return new Promise((resolve) => {
@@ -75,29 +76,29 @@ function createTable(data, month) {
 
   const thead = document.createElement("thead");
   thead.innerHTML = `
-        <tr>
-            <th colspan="5">Transactions for ${month}</th>
-        </tr>
-        <tr>
-            <th data-column="name" data-order="asc">Name</th>
-            <th data-column="date" data-order="asc">Date</th>
-            <th data-column="phone" data-order="asc">Phone Number</th>
-            <th data-column="amount" data-order="asc">Amount (BDT)</th>
-            <th data-column="items" data-order="asc">Items</th>
-        </tr>
-    `;
+      <tr>
+          <th colspan="5">Transactions for ${month}</th>
+      </tr>
+      <tr>
+          <th data-column="name" data-order="asc">Name</th>
+          <th data-column="date" data-order="asc">Date</th>
+          <th data-column="phone" data-order="asc">Phone Number</th>
+          <th data-column="amount" data-order="asc">Amount (BDT)</th>
+          <th data-column="items" data-order="asc">Items</th>
+      </tr>
+  `;
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
   data.forEach((row) => {
     const tableRow = document.createElement("tr");
     tableRow.innerHTML = `
-            <td>${row.name}</td>
-            <td>${row.date}</td>
-            <td>${row.phone}</td>
-            <td>${row.amount}</td>
-            <td>${row.items || ""}</td>
-        `;
+          <td>${row.name}</td>
+          <td>${row.date}</td>
+          <td>${row.phone}</td>
+          <td>${row.amount}</td>
+          <td>${row.items || ""}</td>
+      `;
 
     // Apply different background colors based on the type
     tableRow.style.backgroundColor =
