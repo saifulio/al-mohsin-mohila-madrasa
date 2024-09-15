@@ -52,24 +52,39 @@ function groupByMonth(data) {
   return monthGroups;
 }
 
-// Render each table and summary by month
+// Render each table and summary (balance) by month
+// Render each table and summary (balance) by month, with the latest month at the top
 function renderMonthlyTables(groupedData) {
   const contentDiv = document.getElementById("content");
   contentDiv.innerHTML = ""; // Clear content
 
-  Object.keys(groupedData).forEach((month) => {
+  let cumulativeBalance = 0; // To track the cumulative balance
+
+  // Sort months in descending order (latest first)
+  const sortedMonths = Object.keys(groupedData).sort(
+    (a, b) => new Date(b) - new Date(a)
+  );
+
+  sortedMonths.forEach((month) => {
     const monthData = groupedData[month];
 
-    // Create and insert table
+    // Create and insert table for the month
     const table = createTable(monthData, month);
     contentDiv.appendChild(table);
 
-    // Calculate and insert summary (total amount + donated items)
-    const summary = calculateSummary(monthData);
-    contentDiv.appendChild(summary);
+    // Calculate balance for the month and update cumulative balance
+    const balanceSummary = calculateBalanceSummary(
+      monthData,
+      cumulativeBalance
+    );
+    cumulativeBalance += balanceSummary.balanceForMonth; // Update cumulative balance
+
+    // Render the balance summary
+    contentDiv.appendChild(renderBalanceSummary(balanceSummary));
   });
 }
 
+// Function to create a table for the transactions of a month
 function createTable(data, month) {
   const table = document.createElement("table");
   table.className = "donation-table"; // Optional class for styling
@@ -80,11 +95,11 @@ function createTable(data, month) {
           <th colspan="5">Transactions for ${month}</th>
       </tr>
       <tr>
-          <th data-column="name" data-order="asc">Name</th>
-          <th data-column="date" data-order="asc">Date</th>
-          <th data-column="phone" data-order="asc">Phone Number</th>
-          <th data-column="amount" data-order="asc">Amount (BDT)</th>
-          <th data-column="items" data-order="asc">Items</th>
+          <th>Name</th>
+          <th>Date</th>
+          <th>Phone Number</th>
+          <th>Amount (BDT)</th>
+          <th>Items</th>
       </tr>
   `;
   table.appendChild(thead);
@@ -102,7 +117,7 @@ function createTable(data, month) {
 
     // Apply different background colors based on the type
     tableRow.style.backgroundColor =
-      row.type === "donation" ? "#d4f7d4" : "#f7d4d4";
+      row.type === "donation" ? "#d4f7d4" : "#f7d4d4"; // Green for donations, Red for expenditures
 
     tbody.appendChild(tableRow);
   });
@@ -112,31 +127,50 @@ function createTable(data, month) {
   return table;
 }
 
-// Calculate total amount and items for the current month
-function calculateSummary(data) {
-  let totalAmount = 0;
-  const itemSet = new Set();
+// Calculate balance for the month and return the balance and total donations/expenditures
+function calculateBalanceSummary(data, cumulativeBalance) {
+  let totalDonations = 0;
+  let totalExpenditures = 0;
 
   data.forEach((row) => {
     const amount = parseFloat(row.amount) || 0;
-    totalAmount += amount;
-
-    if (row.items) {
-      const items = row.items.split(",").map((item) => item.trim());
-      items.forEach((item) => itemSet.add(item));
+    if (row.type === "donation") {
+      totalDonations += amount;
+    } else if (row.type === "expenditure") {
+      totalExpenditures += amount;
     }
   });
 
+  const balanceForMonth = totalDonations - totalExpenditures;
+  const cumulativeBalanceAtEndOfMonth = cumulativeBalance + balanceForMonth;
+
+  return {
+    totalDonations,
+    totalExpenditures,
+    balanceForMonth,
+    cumulativeBalanceAtEndOfMonth,
+  };
+}
+
+// Function to render the balance summary for the month and cumulative balance
+function renderBalanceSummary(summary) {
   const summaryDiv = document.createElement("div");
   summaryDiv.className = "summary";
 
-  const totalAmountHtml = `<h2>Total Amount for Month (BDT): ${totalAmount.toFixed(
+  const balanceHtml = `<h2>Balance for Month (BDT): ${summary.balanceForMonth.toFixed(
     2
   )}</h2>`;
-  const itemsHtml = `<h3>Donated Items:</h3><ul>${Array.from(itemSet)
-    .map((item) => `<li>${item}</li>`)
-    .join("")}</ul>`;
+  const cumulativeBalanceHtml = `<h3>Balance at the End of the Month (BDT): ${summary.cumulativeBalanceAtEndOfMonth.toFixed(
+    2
+  )}</h3>`;
+  const donationsHtml = `<h4>Total Donations: ${summary.totalDonations.toFixed(
+    2
+  )} BDT</h4>`;
+  const expendituresHtml = `<h4>Total Expenditures: ${summary.totalExpenditures.toFixed(
+    2
+  )} BDT</h4>`;
 
-  summaryDiv.innerHTML = totalAmountHtml + itemsHtml;
+  summaryDiv.innerHTML =
+    balanceHtml + cumulativeBalanceHtml + donationsHtml + expendituresHtml;
   return summaryDiv;
 }
