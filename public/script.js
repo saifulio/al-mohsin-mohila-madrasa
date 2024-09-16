@@ -52,15 +52,15 @@ function groupByMonth(data) {
   return monthGroups;
 }
 
-// Render each table and summary (balance) by month
 // Render each table and summary (balance) by month, with the latest month at the top
 function renderMonthlyTables(groupedData) {
   const contentDiv = document.getElementById("content");
   contentDiv.innerHTML = ""; // Clear content
 
-  let cumulativeBalance = 0; // To track the cumulative balance
+  // First, calculate cumulative balances from oldest to newest
+  const cumulativeBalances = calculateCumulativeBalances(groupedData);
 
-  // Sort months in descending order (latest first)
+  // Sort months in descending order (latest first) for rendering
   const sortedMonths = Object.keys(groupedData).sort(
     (a, b) => new Date(b) - new Date(a)
   );
@@ -68,31 +68,106 @@ function renderMonthlyTables(groupedData) {
   sortedMonths.forEach((month) => {
     const monthData = groupedData[month];
 
+    // Format the month to "Month, Year" format
+    const formattedMonth = formatMonthYear(month);
+
     // Create and insert table for the month
-    const table = createTable(monthData, month);
+    const table = createTable(monthData, formattedMonth);
     contentDiv.appendChild(table);
 
-    // Calculate balance for the month and update cumulative balance
-    const balanceSummary = calculateBalanceSummary(
-      monthData,
-      cumulativeBalance
-    );
-    cumulativeBalance += balanceSummary.balanceForMonth; // Update cumulative balance
+    // Get the cumulative balance and balance for the month
+    const { balanceForMonth, cumulativeBalanceAtEndOfMonth } =
+      cumulativeBalances[month];
 
     // Render the balance summary
-    contentDiv.appendChild(renderBalanceSummary(balanceSummary));
+    const summary = renderBalanceSummary(
+      balanceForMonth,
+      cumulativeBalanceAtEndOfMonth
+    );
+    contentDiv.appendChild(summary);
   });
 }
 
-// Function to create a table for the transactions of a month
-function createTable(data, month) {
+// Calculate balances and cumulative balances in chronological order (oldest to newest)
+function calculateCumulativeBalances(groupedData) {
+  let cumulativeBalance = 0; // Start cumulative balance at 0
+  const balances = {};
+
+  // Sort months in ascending order (oldest first) for calculation
+  const sortedMonths = Object.keys(groupedData).sort(
+    (a, b) => new Date(a) - new Date(b)
+  );
+
+  sortedMonths.forEach((month) => {
+    const monthData = groupedData[month];
+
+    // Calculate balance for the current month
+    const { totalDonations, totalExpenditures } =
+      calculateBalanceForMonth(monthData);
+    const balanceForMonth = totalDonations - totalExpenditures;
+
+    // Update cumulative balance
+    cumulativeBalance += balanceForMonth;
+
+    // Debugging: Log balances for each month
+    console.log(
+      `Month: ${month}, Balance: ${balanceForMonth}, Cumulative Balance: ${cumulativeBalance}`
+    );
+
+    // Store both month balance and cumulative balance
+    balances[month] = {
+      balanceForMonth,
+      cumulativeBalanceAtEndOfMonth: cumulativeBalance,
+    };
+  });
+
+  return balances;
+}
+
+// Helper function to calculate donations and expenditures for a month
+function calculateBalanceForMonth(data) {
+  let totalDonations = 0;
+  let totalExpenditures = 0;
+
+  data.forEach((row) => {
+    const amount = parseFloat(row.amount) || 0;
+    if (row.type === "donation") {
+      totalDonations += amount;
+    } else if (row.type === "expenditure") {
+      totalExpenditures += amount;
+    }
+  });
+
+  return { totalDonations, totalExpenditures };
+}
+
+// Render the balance summary for the month and cumulative balance
+function renderBalanceSummary(
+  balanceForMonth = 0,
+  cumulativeBalanceAtEndOfMonth = 0
+) {
+  const summaryDiv = document.createElement("div");
+  summaryDiv.className = "summary";
+
+  const balanceHtml = `<h2>Balance for Month (BDT): ${balanceForMonth.toFixed(
+    2
+  )}</h2>`;
+  const cumulativeBalanceHtml = `<h3>Balance at the End of the Month (BDT): ${cumulativeBalanceAtEndOfMonth.toFixed(
+    2
+  )}</h3>`;
+
+  summaryDiv.innerHTML = balanceHtml + cumulativeBalanceHtml;
+  return summaryDiv;
+}
+
+function createTable(data, formattedMonth) {
   const table = document.createElement("table");
   table.className = "donation-table"; // Optional class for styling
 
   const thead = document.createElement("thead");
   thead.innerHTML = `
       <tr>
-          <th colspan="5">Transactions for ${month}</th>
+          <th colspan="5">Transactions for ${formattedMonth}</th>
       </tr>
       <tr>
           <th>Name</th>
@@ -152,25 +227,10 @@ function calculateBalanceSummary(data, cumulativeBalance) {
   };
 }
 
-// Function to render the balance summary for the month and cumulative balance
-function renderBalanceSummary(summary) {
-  const summaryDiv = document.createElement("div");
-  summaryDiv.className = "summary";
-
-  const balanceHtml = `<h2>Balance for Month (BDT): ${summary.balanceForMonth.toFixed(
-    2
-  )}</h2>`;
-  const cumulativeBalanceHtml = `<h3>Balance at the End of the Month (BDT): ${summary.cumulativeBalanceAtEndOfMonth.toFixed(
-    2
-  )}</h3>`;
-  const donationsHtml = `<h4>Total Donations: ${summary.totalDonations.toFixed(
-    2
-  )} BDT</h4>`;
-  const expendituresHtml = `<h4>Total Expenditures: ${summary.totalExpenditures.toFixed(
-    2
-  )} BDT</h4>`;
-
-  summaryDiv.innerHTML =
-    balanceHtml + cumulativeBalanceHtml + donationsHtml + expendituresHtml;
-  return summaryDiv;
+// Helper function to convert YYYY-MM to "Month, Year" format
+function formatMonthYear(dateString) {
+  const [year, month] = dateString.split("-");
+  const date = new Date(year, month - 1); // Subtract 1 from month since JavaScript months are 0-based
+  const monthName = date.toLocaleString("default", { month: "long" });
+  return `${monthName}, ${year}`;
 }
